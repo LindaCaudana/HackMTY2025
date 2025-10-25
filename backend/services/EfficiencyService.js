@@ -1,12 +1,87 @@
 // backend/services/EfficiencyService.js
+const db = require('../db');
+
 class EfficiencyService {
   constructor() {
     this.packingRecords = [];
     this.employeeMetrics = {};
-    this.initializeMockData();
+    this.loadDataFromDatabase();
   }
 
-  // Inicializar con datos mock del dataset
+  // Cargar datos desde la base de datos
+  loadDataFromDatabase() {
+    try {
+      // Cargar registros de packing
+      this.packingRecords = db.prepare(`
+        SELECT 
+          record_id as recordId,
+          employee_id as employeeId,
+          flight_number as flightNumber,
+          spec_id as specId,
+          start_time as startTime,
+          end_time as endTime,
+          duration_seconds as durationSeconds,
+          accuracy_score as accuracyScore,
+          items_packed as itemsPacked,
+          CASE WHEN rework_flag = 'Yes' THEN true ELSE false END as reworkFlag,
+          supervisor_notes as supervisorNotes
+        FROM efficiency_records
+        ORDER BY start_time DESC
+      `).all();
+      
+      // Cargar métricas de empleados
+      const metricsData = db.prepare(`
+        SELECT 
+          employee_id,
+          total_tasks,
+          total_duration,
+          total_items,
+          completed_tasks,
+          rework_tasks,
+          minor_errors,
+          average_time,
+          average_time_per_item,
+          accuracy_rate,
+          rework_rate,
+          efficiency_score
+        FROM employee_metrics
+      `).all();
+      
+      this.employeeMetrics = {};
+      metricsData.forEach(metric => {
+        this.employeeMetrics[metric.employee_id] = {
+          totalTasks: metric.total_tasks,
+          totalDuration: metric.total_duration,
+          totalItems: metric.total_items,
+          completedTasks: metric.completed_tasks,
+          reworkTasks: metric.rework_tasks,
+          minorErrors: metric.minor_errors,
+          averageTime: metric.average_time,
+          averageTimePerItem: metric.average_time_per_item,
+          accuracyRate: metric.accuracy_rate,
+          reworkRate: metric.rework_rate,
+          efficiencyScore: metric.efficiency_score,
+          commonIssues: new Set()
+        };
+      });
+      
+      // Agregar notas de supervisor como issues comunes
+      this.packingRecords.forEach(record => {
+        if (record.supervisorNotes && this.employeeMetrics[record.employeeId]) {
+          this.employeeMetrics[record.employeeId].commonIssues.add(record.supervisorNotes);
+        }
+      });
+      
+      console.log(`✅ EfficiencyService: Cargados ${this.packingRecords.length} registros y métricas de ${Object.keys(this.employeeMetrics).length} empleados`);
+      
+    } catch (error) {
+      console.error('❌ Error cargando datos de eficiencia:', error);
+      // Fallback a datos mock si hay error
+      this.initializeMockData();
+    }
+  }
+
+  // Fallback con datos mock del dataset
   initializeMockData() {
     this.packingRecords = [
       {
@@ -239,12 +314,133 @@ class EfficiencyService {
     });
   }
 
+  // Refrescar datos desde la base de datos
+  refreshData() {
+    this.loadDataFromDatabase();
+  }
+
   // Agregar nuevo registro de packing
   addPackingRecord(record) {
-    record.recordId = `PKG${String(this.packingRecords.length + 1).padStart(3, '0')}`;
-    this.packingRecords.push(record);
-    this.calculateAllMetrics();
-    return record;
+    try {
+      // Insertar en base de datos
+      const insertStmt = db.prepare(`
+        INSERT INTO efficiency_records (
+          record_id, employee_id, flight_number, spec_id, start_time, end_time,
+          duration_seconds, accuracy_score, items_packed, rework_flag, supervisor_notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      const recordId = `PKG${String(Date.now()).slice(-6)}`;
+      const reworkFlag = record.reworkFlag ? 'Yes' : 'No';
+      
+      insertStmt.run(
+        recordId,
+        record.employeeId,
+        record.flightNumber,
+        record.specId,
+        record.startTime,
+        record.endTime,
+        record.durationSeconds,
+        record.accuracyScore,
+        record.itemsPacked,
+        reworkFlag,
+        record.supervisorNotes || ''
+      );
+      
+      // Recalcular métricas del empleado
+      this.recalculateEmployeeMetrics(record.employeeId);
+      
+      // Refrescar datos en memoria
+      this.refreshData();
+      
+      return { ...record, recordId };
+      
+    } catch (error) {
+      console.error('Error agregando registro:', error);
+      // Fallback a método anterior
+      record.recordId = `PKG${String(this.packingRecords.length + 1).padStart(3, '0')}`;
+      this.packingRecords.push(record);
+      this.calculateAllMetrics();
+      return record;
+    }
+  }
+
+  // Recalcular métricas de un empleado específico
+  recalculateEmployeeMetrics(employeeId) {
+    try {
+      const empData = db.prepare(`
+        SELECT * FROM efficiency_records WHERE employee_id = ?
+      `).all(employeeId);
+      
+      const metrics = this.calculateEmployeeMetrics(empData);
+      
+      const updateStmt = db.prepare(`
+        INSERT OR REPLACE INTO employee_metrics (
+          employee_id, total_tasks, total_duration, total_items, completed_tasks,
+          rework_tasks, minor_errors, average_time, average_time_per_item,
+          accuracy_rate, rework_rate, efficiency_score
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      updateStmt.run(
+        employeeId,
+        metrics.totalTasks,
+        metrics.totalDuration,
+        metrics.totalItems,
+        metrics.completedTasks,
+        metrics.reworkTasks,
+        metrics.minorErrors,
+        metrics.averageTime,
+        metrics.averageTimePerItem,
+        metrics.accuracyRate,
+        metrics.reworkRate,
+        metrics.efficiencyScore
+      );
+      
+    } catch (error) {
+      console.error('Error recalculando métricas:', error);
+    }
+  }
+
+  // Calcular métricas para un conjunto de registros
+  calculateEmployeeMetrics(records) {
+    const metrics = {
+      totalTasks: records.length,
+      totalDuration: 0,
+      totalItems: 0,
+      completedTasks: 0,
+      reworkTasks: 0,
+      minorErrors: 0,
+      averageTime: 0,
+      averageTimePerItem: 0,
+      accuracyRate: 0,
+      reworkRate: 0,
+      efficiencyScore: 0
+    };
+    
+    records.forEach(record => {
+      metrics.totalDuration += record.duration_seconds;
+      metrics.totalItems += record.items_packed;
+      
+      if (record.accuracy_score === 'Pass') {
+        metrics.completedTasks++;
+      } else if (record.accuracy_score === 'Rework Required') {
+        metrics.reworkTasks++;
+      } else if (record.accuracy_score === 'Minor Error') {
+        metrics.minorErrors++;
+      }
+    });
+    
+    // Calcular métricas derivadas
+    if (metrics.totalTasks > 0) {
+      metrics.averageTime = metrics.totalDuration / metrics.totalTasks;
+      metrics.averageTimePerItem = metrics.totalDuration / metrics.totalItems;
+      metrics.accuracyRate = metrics.completedTasks / metrics.totalTasks;
+      metrics.reworkRate = metrics.reworkTasks / metrics.totalTasks;
+      metrics.efficiencyScore = this.calculateEfficiencyScore(metrics);
+    }
+    
+    return metrics;
   }
 }
 

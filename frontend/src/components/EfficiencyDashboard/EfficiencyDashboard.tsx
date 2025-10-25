@@ -2,198 +2,243 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './EfficiencyDashboard.css';
 
-interface DashboardMetrics {
-  totalEmployees: number;
+interface EmployeeRanking {
+  employeeId: string;
+  efficiencyScore: number;
+  averageTime: number;
+  accuracyRate: number;
   totalTasks: number;
-  totalRework: number;
   reworkRate: number;
-  averageEfficiency: number;
-  topPerformers: Array<{
-    employeeId: string;
-    efficiencyScore: number;
-    averageTime: number;
-    accuracyRate: number;
-    totalTasks: number;
-    reworkRate: number;
-  }>;
-  trainingRecommendations: Array<{
-    employeeId: string;
-    priority: string;
-    issue: string;
-    recommendation: string;
-    score: number;
-  }>;
+  totalItems: number;
+  averageTimePerItem: number;
+  itemsPerHour: number;
+}
+
+interface EmployeeTask {
+  recordId: string;
+  employeeId: string;
+  flightNumber: string;
+  specId: string;
+  startTime: string;
+  endTime: string;
+  durationSeconds: number;
+  accuracyScore: string;
+  itemsPacked: number;
+  reworkFlag: boolean;
+  supervisorNotes: string;
 }
 
 const EfficiencyDashboard: React.FC = () => {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [ranking, setRanking] = useState<EmployeeRanking[]>([]);
+  const [employeeTasks, setEmployeeTasks] = useState<EmployeeTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
+  const [recordIdFilter, setRecordIdFilter] = useState<string>('');
+  const [employeeFilter, setEmployeeFilter] = useState<string>('');
 
-  const fetchMetrics = async () => {
+  const fetchRanking = async () => {
     try {
       const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/metrics');
       setMetrics(response.data);
     } catch (error) {
-      console.error('Error fetching metrics:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching ranking:', error);
     }
   };
 
-  const simulateRecord = async () => {
+  const fetchEmployeeTasks = async (employeeId?: string) => {
     try {
       await axios.post('https://hackmty2025.onrender.com/api/efficiency/simulate-record');
       await fetchMetrics(); // Refresh metrics after simulation
     } catch (error) {
-      console.error('Error simulating record:', error);
+      console.error('Error fetching employee tasks:', error);
+      setEmployeeTasks([]);
     }
   };
 
   useEffect(() => {
-    fetchMetrics();
+    const loadData = async () => {
+      await fetchRanking();
+      setLoading(false);
+    };
+    loadData();
+  }, []);
 
-    if (autoRefresh) {
-      const interval = setInterval(fetchMetrics, 5000);
-      return () => clearInterval(interval);
+  useEffect(() => {
+    if (selectedEmployee) {
+      fetchEmployeeTasks(selectedEmployee);
     }
-  }, [autoRefresh]);
+  }, [selectedEmployee]);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH': return 'priority-high';
-      case 'MEDIUM': return 'priority-medium';
-      case 'LOW': return 'priority-low';
-      default: return 'priority-medium';
-    }
+  const getEfficiencyStatus = (score: number) => {
+    if (score >= 85) return { text: 'Eficiente', color: 'efficient' };
+    if (score >= 70) return { text: 'Regular', color: 'regular' };
+    return { text: 'Mejorar', color: 'improve' };
   };
 
-  const getEfficiencyColor = (score: number) => {
-    if (score >= 90) return 'efficiency-excellent';
-    if (score >= 80) return 'efficiency-good';
-    if (score >= 70) return 'efficiency-fair';
-    return 'efficiency-poor';
+  const getEmployeeName = (employeeId: string) => {
+    // Usar directamente el Employee ID del Excel
+    return employeeId;
   };
+
+  const calculateItemsPerHour = (employee: EmployeeRanking) => {
+    if (employee.averageTime === 0) return 0;
+    return Math.round((employee.totalItems / employee.totalTasks) * (3600 / employee.averageTime));
+  };
+
+  const filteredRanking = ranking.filter(emp => {
+    const matchesEmployee = !employeeFilter || 
+      emp.employeeId.toLowerCase().includes(employeeFilter.toLowerCase());
+    
+    return matchesEmployee;
+  });
+
+  const filteredTasks = employeeTasks.filter(task => {
+    const matchesRecord = !recordIdFilter || 
+      task.recordId.toLowerCase().includes(recordIdFilter.toLowerCase());
+    return matchesRecord;
+  });
 
   if (loading) {
-    return <div className="loading">Loading Employee Efficiency Dashboard...</div>;
+    return <div className="loading">Cargando ranking de empleados...</div>;
   }
 
   return (
-    <div className="efficiency-dashboard">
+    <div className="employee-ranking-dashboard">
       <div className="dashboard-header">
-        <h1>👥 Employee Efficiency Analytics</h1>
-        <div className="dashboard-controls">
-          <button 
-            className={`btn ${autoRefresh ? 'btn-success' : 'btn-outline-secondary'}`}
-            onClick={() => setAutoRefresh(!autoRefresh)}
-          >
-            Auto Refresh: {autoRefresh ? 'ON' : 'OFF'}
-          </button>
-          <button className="btn btn-primary" onClick={simulateRecord}>
-            Simulate New Record
-          </button>
-          <button className="btn btn-outline-primary" onClick={fetchMetrics}>
-            Refresh Now
-          </button>
+        <h1>👥 Employee Efficiency</h1>
+        <div className="filters">
+          <input
+            type="text"
+            placeholder="Filtrar por Record ID..."
+            value={recordIdFilter}
+            onChange={(e) => setRecordIdFilter(e.target.value)}
+            className="filter-input"
+          />
+          <input
+            type="text"
+            placeholder="Filtrar por Empleado..."
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="filter-input"
+          />
         </div>
       </div>
 
-      {metrics && (
-        <>
-          {/* Metrics Overview */}
-          <div className="metrics-overview">
-            <div className="metric-card">
-              <div className="metric-icon">👥</div>
-              <div className="metric-content">
-                <h3>{metrics.totalEmployees}</h3>
-                <p>Total Employees</p>
-              </div>
-            </div>
+      <div className="dashboard-content">
+        {/* Ranking List */}
+        <div className="ranking-section">
+          <h2>🏆 Ranking de Empleados</h2>
+          <div className="ranking-list">
+            {filteredRanking.map((employee, index) => {
+              const status = getEfficiencyStatus(employee.efficiencyScore);
+              const itemsPerHour = calculateItemsPerHour(employee);
+              
+              return (
+                <div 
+                  key={employee.employeeId} 
+                  className={`employee-card ${selectedEmployee === employee.employeeId ? 'selected' : ''}`}
+                  onClick={() => setSelectedEmployee(employee.employeeId)}
+                >
+                  <div className="employee-info">
+                    <div className="rank-number">#{index + 1}</div>
+                    <div className="employee-icon">👤</div>
+                    <div className="employee-details">
+                      <h3>{employee.employeeId}</h3>
+                      <p>Empleado</p>
+                    </div>
+                  </div>
 
-            <div className="metric-card">
-              <div className="metric-icon">📊</div>
-              <div className="metric-content">
-                <h3>{metrics.totalTasks}</h3>
-                <p>Total Tasks</p>
-              </div>
-            </div>
+                  <div className="performance-metrics">
+                    <div className="metric">
+                      <div className="metric-label">Productividad</div>
+                      <div className="metric-value">{employee.efficiencyScore}%</div>
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ width: `${employee.efficiencyScore}%` }}
+                        ></div>
+                      </div>
+                    </div>
 
-            <div className="metric-card">
-              <div className="metric-icon">🔄</div>
-              <div className="metric-content">
-                <h3 className={metrics.reworkRate > 0.1 ? 'text-warning' : 'text-success'}>
-                  {(metrics.reworkRate * 100).toFixed(1)}%
-                </h3>
-                <p>Rework Rate</p>
-              </div>
-            </div>
+                    <div className="metric">
+                      <div className="metric-label">Piezas/Hora</div>
+                      <div className="metric-value">
+                        {itemsPerHour}
+                        <span className="trend-icon">📈</span>
+                      </div>
+                    </div>
 
-            <div className="metric-card">
-              <div className="metric-icon">⭐</div>
-              <div className="metric-content">
-                <h3 className={getEfficiencyColor(metrics.averageEfficiency)}>
-                  {metrics.averageEfficiency}%
-                </h3>
-                <p>Avg Efficiency</p>
-              </div>
-            </div>
-          </div>
+                    <div className="metric">
+                      <div className="metric-label">Tiempo/Tarea</div>
+                      <div className="metric-value">
+                        {(employee.averageTime / 60).toFixed(1)} min
+                        <span className="clock-icon">⏰</span>
+                      </div>
+                    </div>
 
-          <div className="dashboard-content">
-            {/* Top Performers */}
-            <div className="content-section">
-              <h3>🏆 Top Performers</h3>
-              <div className="performers-list">
-                {metrics.topPerformers.map((employee, index) => (
-                  <div key={employee.employeeId} className="performer-card">
-                    <div className="rank">#{index + 1}</div>
-                    <div className="employee-info">
-                      <h4>{employee.employeeId}</h4>
-                      <div className="employee-metrics">
-                        <span className={`score ${getEfficiencyColor(employee.efficiencyScore)}`}>
-                          {employee.efficiencyScore}%
-                        </span>
-                        <span>Time: {employee.averageTime}s</span>
-                        <span>Accuracy: {(employee.accuracyRate * 100).toFixed(0)}%</span>
+                    <div className="metric">
+                      <div className="metric-label">Precisión</div>
+                      <div className="metric-value">
+                        {(employee.accuracyRate * 100).toFixed(0)}%
+                        <span className="target-icon">🎯</span>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Training Recommendations */}
-            <div className="content-section">
-              <h3>🎯 Training Recommendations</h3>
-              <div className="recommendations-list">
-                {metrics.trainingRecommendations.length === 0 ? (
-                  <div className="no-recommendations">
-                    <p>No training recommendations needed</p>
-                    <small>All employees are performing well</small>
+                  <div className="efficiency-status">
+                    <button className={`status-button ${status.color}`}>
+                      {status.text}
+                    </button>
                   </div>
-                ) : (
-                  metrics.trainingRecommendations.map((rec, index) => (
-                    <div key={index} className={`recommendation-card ${getPriorityColor(rec.priority)}`}>
-                      <div className="recommendation-header">
-                        <span className="employee-id">{rec.employeeId}</span>
-                        <span className="priority-badge">{rec.priority}</span>
-                      </div>
-                      <div className="recommendation-content">
-                        <p className="issue"><strong>Issue:</strong> {rec.issue}</p>
-                        <p className="recommendation"><strong>Action:</strong> {rec.recommendation}</p>
-                      </div>
-                      <div className="efficiency-score">
-                        Efficiency: <span className={getEfficiencyColor(rec.score)}>{rec.score}%</span>
-                      </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Employee Tasks Detail */}
+        {selectedEmployee && (
+          <div className="tasks-section">
+            <h2>📋 Tareas de {selectedEmployee}</h2>
+            <div className="tasks-list">
+              {filteredTasks.length > 0 ? (
+                filteredTasks.map((task) => (
+                  <div key={task.recordId} className="task-card">
+                    <div className="task-header">
+                      <h4>{task.recordId}</h4>
+                      <span className={`task-status ${task.accuracyScore.toLowerCase().replace(' ', '-')}`}>
+                        {task.accuracyScore}
+                      </span>
                     </div>
-                  ))
-                )}
-              </div>
+                    <div className="task-details">
+                      <div className="task-info">
+                        <span><strong>Vuelo:</strong> {task.flightNumber}</span>
+                        <span><strong>Especificación:</strong> {task.specId}</span>
+                        <span><strong>Items:</strong> {task.itemsPacked}</span>
+                        <span><strong>Duración:</strong> {task.durationSeconds}s</span>
+                      </div>
+                      <div className="task-time">
+                        <span><strong>Inicio:</strong> {task.startTime}</span>
+                        <span><strong>Fin:</strong> {task.endTime}</span>
+                      </div>
+                      {task.supervisorNotes && (
+                        <div className="task-notes">
+                          <strong>Notas:</strong> {task.supervisorNotes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-tasks">
+                  <p>No hay tareas específicas disponibles para este empleado.</p>
+                  <p>Selecciona un empleado diferente o verifica los filtros.</p>
+                </div>
+              )}
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };
