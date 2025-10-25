@@ -1,0 +1,22 @@
+# LO ESENCIAL
+node_modules/
+/.pnp
+.pnp.js
+
+# Build de React
+/build
+
+# Environment variables  
+.env
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
