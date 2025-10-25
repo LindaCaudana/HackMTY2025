@@ -51,20 +51,7 @@ const BottleDecision = () => {
     setBottle(prev => ({ ...prev, [field]: value }));
   };
 
-  const quickExamples = [
-    {
-      name: "Opened Emirates Bottle",
-      data: { customerCode: 'EK', fillLevel: 45, sealStatus: 'Opened', cleanliness: 'Good', labelStatus: 'Intact' }
-    },
-    {
-      name: "Damaged BA Bottle", 
-      data: { customerCode: 'BA', fillLevel: 75, sealStatus: 'Resealed', cleanliness: 'Excellent', labelStatus: 'Heavily_Damaged' }
-    },
-    {
-      name: "Partial Swiss Bottle",
-      data: { customerCode: 'LX', fillLevel: 65, sealStatus: 'Sealed', cleanliness: 'Good', labelStatus: 'Slightly_Damaged' }
-    }
-  ];
+  // quickExamples removed per request; fillLevel will be controlled in 10% steps and shown on a bottle silhouette
 
   return (
     <div className="bottle-decision">
@@ -77,22 +64,7 @@ const BottleDecision = () => {
                 <h3>Evaluate Alcohol Bottle</h3>
               </div>
               <div className="card-body">
-                {/* QUICK EXAMPLES */}
-                <div className="quick-examples mb-3">
-                  <h6>Quick Examples:</h6>
-                  <div className="btn-group">
-                    {quickExamples.map((example, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => setBottle(example.data)}
-                      >
-                        {example.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* quick examples removed */}
 
                 <form onSubmit={handleSubmit}>
                   {/* AIRLINE SELECTOR */}
@@ -118,9 +90,21 @@ const BottleDecision = () => {
                       className="form-range"
                       min="0" 
                       max="100" 
+                      step={10}
                       value={bottle.fillLevel}
                       onChange={(e) => handleChange('fillLevel', parseInt(e.target.value))}
                     />
+                    <div className="fill-help">Choose fill level in 10% increments — the bottle silhouette on the right reflects the selected level.</div>
+                    <div className="fill-presets mt-2">
+                      {[0,10,20,30,40,50,60,70,80,90,100].map(v => (
+                        <button
+                          key={v}
+                          type="button"
+                          className={`btn btn-sm btn-outline-secondary preset ${bottle.fillLevel===v? 'active':''}`}
+                          onClick={() => handleChange('fillLevel', v)}
+                        >{v}%</button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* SEAL STATUS */}
@@ -180,6 +164,16 @@ const BottleDecision = () => {
 
           {/* RESULTADO */}
           <div className="col-md-6">
+            {/* Bottle silhouette preview always visible */}
+            <div className="card mb-3">
+              <div className="card-body text-center">
+                <div className="bottle-preview" aria-hidden>
+                  <div className="liquid" style={{ height: `${bottle.fillLevel}%` }} />
+                  <div className="bottle-label">{bottle.customerCode}</div>
+                </div>
+                <div className="small text-muted mt-2">Silueta: nivel de líquido (pasos de 10%)</div>
+              </div>
+            </div>
             {decision && (
               <div className={`decision-result alert alert-${decision.color}`}>
                 <h4>Decision: {decision.action}</h4>
