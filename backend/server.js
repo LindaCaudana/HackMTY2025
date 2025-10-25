@@ -1,12 +1,16 @@
 // backend/server.js
 const express = require('express');
 const cors = require('cors');
+const efficiencyRoutes = require('./routes/efficiency');
 
 const app = express();
 const PORT = 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Importar rutas
+const errorDetectionRoutes = require('./routes/errorDetection');
 
 // RUTA BASE DE PRUEBA
 app.get('/', (req, res) => {
@@ -24,27 +28,38 @@ app.get('/api/bottles/history', (req, res) => {
   res.json({ history: getDecisionHistory() });
 });
 
+// MÓDULO ERROR DETECTION
+app.use('/api/error-detection', errorDetectionRoutes);
+
+// MÓDULO Efficiency Service
+app.use('/api/efficiency', efficiencyRoutes);
+
 // MOTOR DE REGLAS SLA
 function evaluateBottle(bottle) {
   const rules = getAirlineRules(bottle.customerCode);
   
   for (const rule of rules) {
     if (rule.condition(bottle)) {
-      return {
+      // Agregar al historial
+      const decision = {
         action: rule.action,
         reason: rule.reason,
         timestamp: new Date().toISOString(),
         color: getActionColor(rule.action)
       };
+      addToDecisionHistory(decision);
+      return decision;
     }
   }
   
-  return {
+  const defaultDecision = {
     action: 'Keep',
     reason: 'No issues detected - meets standards',
     timestamp: new Date().toISOString(),
     color: 'success'
   };
+  addToDecisionHistory(defaultDecision);
+  return defaultDecision;
 }
 
 // REGLAS BASADAS EN DATASET
@@ -109,10 +124,21 @@ function getActionColor(action) {
 // HISTORIAL EN MEMORIA (SIMPLIFICADO)
 let decisionHistory = [];
 
+function addToDecisionHistory(decision) {
+  decisionHistory.push(decision);
+  // Mantener solo las últimas 10 decisiones
+  if (decisionHistory.length > 10) {
+    decisionHistory = decisionHistory.slice(-10);
+  }
+}
+
 function getDecisionHistory() {
-  return decisionHistory.slice(-10); // Últimas 10 decisiones
+  return decisionHistory;
 }
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
+  console.log(`📊 Bottle Decision API: http://localhost:${PORT}/api/bottles/evaluate`);
+  console.log(`🔍 Error Detection API: http://localhost:${PORT}/api/error-detection/metrics`);
+  console.log(`👥 Employee Efficiency API: http://localhost:${PORT}/api/efficiency/metrics`);
 });
