@@ -1,0 +1,289 @@
+.efficiency-dashboard {
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  color: #343a40;
+}
+
+.dashboard-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.metrics-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: transform 0.2s;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+}
+
+.metric-icon {
+  font-size: 2em;
+  opacity: 0.8;
+}
+
+.metric-content h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.8em;
+  font-weight: bold;
+}
+
+.metric-content p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.content-section {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.content-section h3 {
+  margin: 0 0 15px 0;
+  color: #343a40;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 8px;
+}
+
+/* Top Performers */
+.performers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.performer-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 6px;
+  background: #f8f9fa;
+  transition: background-color 0.2s;
+}
+
+.performer-card:hover {
+  background: #e9ecef;
+}
+
+.rank {
+  background: #007bff;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.employee-info h4 {
+  margin: 0 0 5px 0;
+  color: #343a40;
+}
+
+.employee-metrics {
+  display: flex;
+  gap: 10px;
+  font-size: 0.8em;
+}
+
+.employee-metrics span {
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #e9ecef;
+}
+
+/* Training Recommendations */
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recommendation-card {
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid;
+  transition: transform 0.2s;
+}
+
+.recommendation-card:hover {
+  transform: translateX(5px);
+}
+
+.recommendation-card.priority-high {
+  border-left-color: #dc3545;
+  background: #f8d7da;
+}
+
+.recommendation-card.priority-medium {
+  border-left-color: #ffc107;
+  background: #fff3cd;
+}
+
+.recommendation-card.priority-low {
+  border-left-color: #28a745;
+  background: #d4edda;
+}
+
+.recommendation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.employee-id {
+  font-weight: bold;
+  color: #343a40;
+}
+
+.priority-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7em;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.priority-high .priority-badge {
+  background: #dc3545;
+  color: white;
+}
+
+.priority-medium .priority-badge {
+  background: #ffc107;
+  color: #000;
+}
+
+.priority-low .priority-badge {
+  background: #28a745;
+  color: white;
+}
+
+.recommendation-content p {
+  margin: 5px 0;
+  font-size: 0.9em;
+}
+
+.efficiency-score {
+  margin-top: 8px;
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+/* Efficiency Colors */
+.efficiency-excellent { color: #28a745; }
+.efficiency-good { color: #20c997; }
+.efficiency-fair { color: #ffc107; }
+.efficiency-poor { color: #dc3545; }
+
+.text-success { color: #28a745; }
+.text-warning { color: #ffc107; }
+.text-danger { color: #dc3545; }
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 1.2em;
+  color: #6c757d;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-outline-primary {
+  background: transparent;
+  border: 1px solid #007bff;
+  color: #007bff;
+}
+
+.btn-outline-secondary {
+  background: transparent;
+  border: 1px solid #6c757d;
+  color: #6c757d;
+}
+
+.no-recommendations {
+  text-align: center;
+  padding: 30px;
+  color: #28a745;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .metrics-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .employee-metrics {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
