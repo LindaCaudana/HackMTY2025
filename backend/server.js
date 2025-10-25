@@ -2,6 +2,8 @@
 const express = require('express');
 const cors = require('cors');
 const efficiencyRoutes = require('./routes/efficiency');
+const alcoholRuleService = require('./services/AlcoholRuleService');
+const alcoholRoutes = require('./routes/alcohol');
 
 const app = express();
 const PORT = 5000;
@@ -20,8 +22,11 @@ app.get('/', (req, res) => {
 // MÓDULO BOTELLAS - RUTAS PRINCIPALES
 app.post('/api/bottles/evaluate', (req, res) => {
   const bottleData = req.body;
+  console.log('[/api/bottles/evaluate] Received payload:', JSON.stringify(bottleData));
   const decision = evaluateBottle(bottleData);
-  res.json(decision);
+  // include a lightweight debug object in the response so the frontend can show what was evaluated
+  const resp = { ...decision, debug: { received: bottleData } };
+  res.json(resp);
 });
 
 app.get('/api/bottles/history', (req, res) => {
@@ -34,8 +39,28 @@ app.use('/api/error-detection', errorDetectionRoutes);
 // MÓDULO Efficiency Service
 app.use('/api/efficiency', efficiencyRoutes);
 
+// MÓDULO Alcohol import
+app.use('/api/alcohol', alcoholRoutes);
+
 // MOTOR DE REGLAS SLA
 function evaluateBottle(bottle) {
+  // First try dynamic rules loaded from Excel (if any)
+  try {
+    const dyn = alcoholRuleService.evaluateBottle(bottle);
+    if (dyn) {
+      const decision = {
+        action: dyn.action,
+        reason: dyn.reason,
+        timestamp: new Date().toISOString(),
+        color: getActionColor(dyn.action)
+      };
+      addToDecisionHistory(decision);
+      return decision;
+    }
+  } catch (err) {
+    console.error('Dynamic rule evaluation error:', err);
+  }
+
   const rules = getAirlineRules(bottle.customerCode);
   
   for (const rule of rules) {
