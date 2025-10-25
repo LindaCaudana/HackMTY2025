@@ -35,7 +35,7 @@ const BottleDecision = () => {
     setLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/bottles/evaluate', bottle);
+      const response = await axios.post('https://hackmty2025.onrender.com/api/bottles/evaluate', bottle);
       const newDecision = response.data;
       setDecision(newDecision);
       setHistory(prev => [newDecision, ...prev.slice(0, 9)]); // Últimas 10

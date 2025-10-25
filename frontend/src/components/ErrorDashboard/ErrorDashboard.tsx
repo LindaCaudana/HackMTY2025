@@ -24,7 +24,7 @@ const ErrorDashboard: React.FC = () => {
 
   const fetchMetrics = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/error-detection/metrics');
+      const response = await axios.get('https://hackmty2025.onrender.com/api/error-detection/metrics');
       setMetrics(response.data);
     } catch (error) {
       console.error('Error fetching metrics:', error);
@@ -35,7 +35,7 @@ const ErrorDashboard: React.FC = () => {
 
   const simulateData = async () => {
     try {
-      await axios.post('http://localhost:5000/api/error-detection/simulate');
+      await axios.post('https://hackmty2025.onrender.com/api/error-detection/simulate');
       alert('Real-time data simulation started!');
     } catch (error) {
       console.error('Error simulating data:', error);
