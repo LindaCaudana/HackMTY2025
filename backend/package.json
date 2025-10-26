@@ -16,13 +16,14 @@
     "node": "20.x"
   },
   "dependencies": {
+    "better-sqlite3": "^8.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "better-sqlite3": "^8.4.0",
-    "xlsx": "^0.18.5",
+    "multer": "^1.4.5-lts.1",
     "pdf-parse": "^1.1.1",
-    "multer": "^1.4.5-lts.1"
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
