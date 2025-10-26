@@ -38,8 +38,21 @@ const EfficiencyDashboard: React.FC = () => {
 
   const fetchRanking = useCallback(async () => {
     try {
-      const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/metrics');
-      setRanking(response.data);
+  const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/ranking');
+  // backend may return an array or an object; normalize to array
+      const payload = response.data;
+      if (Array.isArray(payload)) {
+        setRanking(payload);
+      } else if (payload && Array.isArray(payload.ranking)) {
+        setRanking(payload.ranking);
+      } else if (payload && Array.isArray(payload.data)) {
+        setRanking(payload.data);
+      } else {
+        // fallback: try to extract from common wrapper keys
+        const extracted = payload && (payload.items || payload.results || payload.list || payload.rows);
+        if (Array.isArray(extracted)) setRanking(extracted);
+        else setRanking([]);
+      }
     } catch (error) {
       console.error('Error fetching ranking:', error);
     }
@@ -47,8 +60,12 @@ const EfficiencyDashboard: React.FC = () => {
 
   const fetchEmployeeTasks = useCallback(async (employeeId?: string) => {
     try {
-      await axios.post('https://hackmty2025.onrender.com/api/efficiency/simulate-record');
-      await fetchRanking(); // refresca el ranking
+      if (employeeId) {
+  const tasksResponse = await axios.get(`https://hackmty2025.onrender.com/api/efficiency/employee/${employeeId}/tasks`);
+        setEmployeeTasks(tasksResponse.data.tasks || []);
+      } else {
+        setEmployeeTasks([]);
+      }
     } catch (error) {
       console.error('Error fetching employee tasks:', error);
       setEmployeeTasks([]);
