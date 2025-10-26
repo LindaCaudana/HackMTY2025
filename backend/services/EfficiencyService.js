@@ -72,10 +72,10 @@ class EfficiencyService {
         }
       });
       
-      console.log(`✅ EfficiencyService: Cargados ${this.packingRecords.length} registros y métricas de ${Object.keys(this.employeeMetrics).length} empleados`);
+  console.log(`EfficiencyService: Loaded ${this.packingRecords.length} records and metrics for ${Object.keys(this.employeeMetrics).length} employees`);
       
     } catch (error) {
-      console.error('❌ Error cargando datos de eficiencia:', error);
+      console.error('Error loading efficiency data:', error);
       // Fallback a datos mock si hay error
       this.initializeMockData();
     }
@@ -350,13 +350,13 @@ class EfficiencyService {
       // Recalcular métricas del empleado
       this.recalculateEmployeeMetrics(record.employeeId);
       
-      // Refrescar datos en memoria
+  // Refresh in-memory data
       this.refreshData();
       
       return { ...record, recordId };
       
     } catch (error) {
-      console.error('Error agregando registro:', error);
+      console.error('Error adding record:', error);
       // Fallback a método anterior
       record.recordId = `PKG${String(this.packingRecords.length + 1).padStart(3, '0')}`;
       this.packingRecords.push(record);

@@ -4,7 +4,7 @@ const db = require('../db');
 
 async function importEmployeeEfficiencyData() {
   try {
-    console.log('📊 Importando datos de Employee Efficiency...\n');
+  console.log('Importing Employee Efficiency data...\n');
     
     // Leer Excel
     const excelPath = path.join(__dirname, '..', '..', 'hackmty', '[HackMTY2025]_EmployeeEfficiency_Dataset_v1.xlsx');
@@ -12,7 +12,7 @@ async function importEmployeeEfficiencyData() {
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const jsonData = XLSX.utils.sheet_to_json(worksheet);
     
-    console.log(`✅ Excel leído: ${jsonData.length} registros`);
+  console.log(`Excel read: ${jsonData.length} records`);
     
     // Crear tabla para efficiency data
     db.exec(`
@@ -61,12 +61,12 @@ async function importEmployeeEfficiencyData() {
           record.Supervisor_Notes || ''
         );
         inserted++;
-      } catch (error) {
-        console.log(`⚠️ Error insertando ${record.Record_ID}:`, error.message);
+        } catch (error) {
+        console.log(`Warning inserting ${record.Record_ID}:`, error.message);
       }
     }
     
-    console.log(`✅ ${inserted} registros insertados exitosamente`);
+  console.log(`${inserted} records inserted successfully`);
     
     // Crear tabla para métricas calculadas
     db.exec(`
@@ -123,7 +123,7 @@ async function importEmployeeEfficiencyData() {
       );
     }
     
-    console.log(`✅ Métricas calculadas para ${employees.length} empleados`);
+  console.log(`Metrics calculated for ${employees.length} employees`);
     
     // Mostrar estadísticas
     const stats = db.prepare(`
@@ -138,14 +138,14 @@ async function importEmployeeEfficiencyData() {
       FROM efficiency_records
     `).get();
     
-    console.log('\n📈 Estadísticas de los datos:');
-    console.log(`  Total registros: ${stats.total_records}`);
-    console.log(`  Total empleados: ${stats.total_employees}`);
-    console.log(`  Total vuelos: ${stats.total_flights}`);
-    console.log(`  Total especificaciones: ${stats.total_specs}`);
-    console.log(`  Duración promedio: ${stats.avg_duration.toFixed(1)} segundos`);
-    console.log(`  Items promedio: ${stats.avg_items.toFixed(1)}`);
-    console.log(`  Registros con rework: ${stats.rework_count} (${(stats.rework_count/stats.total_records*100).toFixed(1)}%)`);
+  console.log('\nData statistics:');
+  console.log(`  Total records: ${stats.total_records}`);
+  console.log(`  Total employees: ${stats.total_employees}`);
+  console.log(`  Total flights: ${stats.total_flights}`);
+  console.log(`  Total specs: ${stats.total_specs}`);
+  console.log(`  Average duration: ${stats.avg_duration.toFixed(1)} seconds`);
+  console.log(`  Average items: ${stats.avg_items.toFixed(1)}`);
+  console.log(`  Records with rework: ${stats.rework_count} (${(stats.rework_count/stats.total_records*100).toFixed(1)}%)`);
     
     return {
       success: true,
@@ -154,8 +154,8 @@ async function importEmployeeEfficiencyData() {
       stats
     };
     
-  } catch (error) {
-    console.error('❌ Error importando datos:', error);
+    } catch (error) {
+    console.error('Error importing data:', error);
     return { success: false, error: error.message };
   }
 }

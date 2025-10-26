@@ -30,17 +30,13 @@ const BottleDecision = () => {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<Decision[]>([]);
-  const [importLoading, setImportLoading] = useState(false);
-  const [importResult, setImportResult] = useState<any | null>(null);
-  const [listLoading, setListLoading] = useState(false);
-  const [importedItems, setImportedItems] = useState<any[]>([]);
+  
   const [fieldsMeta, setFieldsMeta] = useState<any[]>([]);
   const [dynamicInputs, setDynamicInputs] = useState<Record<string, any>>({});
   const [mappings, setMappings] = useState<any>(null);
   const [keysMap, setKeysMap] = useState<any>({});
   const [saveInputs, setSaveInputs] = useState<boolean>(false);
-  const [pendingPayload, setPendingPayload] = useState<any | null>(null);
-  const [showPreview, setShowPreview] = useState<boolean>(false);
+  
 
   useEffect(() => {
     // fetch fields metadata and mappings for dynamic form
@@ -139,15 +135,14 @@ const BottleDecision = () => {
       submitBottle['inboundFlight'] = `${bottle.customerCode || ''}${flightNum}`;
     }
 
-    // set pending payload and show preview for confirmation
-    setPendingPayload(submitBottle);
-    setShowPreview(true);
+    // directly evaluate with constructed payload
+    await doEvaluate(submitBottle);
   };
 
   const doEvaluate = async (payload: any) => {
     setLoading(true);
     try {
-      const response = await axios.post('https://hackmty2025.onrender.com/api/bottles/evaluate', bottle);
+      const response = await axios.post('https://hackmty2025.onrender.com/api/bottles/evaluate', payload);
       const newDecision = response.data;
       setDecision(newDecision);
       setHistory(prev => [newDecision, ...prev.slice(0, 9)]);
@@ -164,8 +159,6 @@ const BottleDecision = () => {
       alert('Error processing bottle decision. Make sure backend is running on port 5000.');
     } finally {
       setLoading(false);
-      setShowPreview(false);
-      setPendingPayload(null);
     }
   };
 
@@ -394,18 +387,6 @@ const BottleDecision = () => {
                     {loading ? 'Evaluating...' : 'Evaluate Bottle'}
                   </button>
                 </form>
-                {showPreview && pendingPayload && (
-                  <div className="card mt-3">
-                    <div className="card-body">
-                      <h6>Payload preview</h6>
-                      <pre style={{ maxHeight: 300, overflow: 'auto' }}>{JSON.stringify(pendingPayload, null, 2)}</pre>
-                      <div className="d-flex gap-2">
-                        <button className="btn btn-success" onClick={() => doEvaluate(pendingPayload)} disabled={loading}>Confirm & Evaluate</button>
-                        <button className="btn btn-secondary" onClick={() => { setShowPreview(false); setPendingPayload(null); }} disabled={loading}>Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -419,71 +400,11 @@ const BottleDecision = () => {
                   <div className="liquid" style={{ height: `${bottle.fillLevel}%` }} />
                   <div className="bottle-label">{bottle.customerCode}</div>
                 </div>
-                <div className="small text-muted mt-2">Silueta: nivel de líquido (pasos de 10%)</div>
-                <div className="mt-3 d-flex gap-2 justify-content-center">
-                  <button
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={async () => {
-                      try {
-                        setImportLoading(true);
-                        setImportResult(null);
-                        const res = await axios.post('http://localhost:5000/api/alcohol/import');
-                        setImportResult(res.data);
-                      } catch (err) {
-                        const msg = (err as any)?.message || String(err);
-                        setImportResult({ error: msg });
-                      } finally {
-                        setImportLoading(false);
-                      }
-                    }}
-                    disabled={importLoading}
-                  >
-                    {importLoading ? 'Importing...' : 'Import Alcohol Data'}
-                  </button>
-
-                  <button
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={async () => {
-                      try {
-                        setListLoading(true);
-                        const res = await axios.get('http://localhost:5000/api/alcohol/list?limit=20');
-                        setImportedItems(res.data.items || []);
-                      } catch (err) {
-                        setImportedItems([]);
-                        console.error(err);
-                      } finally {
-                        setListLoading(false);
-                      }
-                    }}
-                  >
-                    {listLoading ? 'Loading...' : 'View Imported Items'}
-                  </button>
-                </div>
+                <div className="small text-muted mt-2">Liquid level indicator (10% increments)</div>
+                
               </div>
             </div>
-            {importResult && (
-              <div className="card mb-3">
-                <div className="card-body small">
-                  <h6>Import result</h6>
-                  <pre style={{ maxHeight: 200, overflow: 'auto' }}>{JSON.stringify(importResult, null, 2)}</pre>
-                </div>
-              </div>
-            )}
-            {importedItems.length > 0 && (
-              <div className="card mb-3">
-                <div className="card-body">
-                  <h6>Imported items (latest)</h6>
-                  <ul className="list-unstyled small">
-                    {importedItems.slice(0,20).map(item => (
-                      <li key={item.id} className="mb-2">
-                        <strong>{item.source}</strong> — <span className="text-muted">{item.inserted_at}</span>
-                        <div className="mt-1"><code style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(item.data)}</code></div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
+            
             {decision && (
               <div className={`decision-result alert alert-${decision.color}`}>
                 <h4>Decision: {decision.action}</h4>

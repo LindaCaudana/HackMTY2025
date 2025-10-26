@@ -3,7 +3,7 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: #260877;
   padding: 20px;
   color: white;
   margin-bottom: 30px;
@@ -18,7 +18,7 @@
   margin: 10px 0 0 0;
   opacity: 0.8;
 }
-/* ✅ AGREGAR ESTO AL FINAL del archivo App.css existente */
+/* Add these navigation styles to the end of App.css (if not present) */
 
 /* Navigation Tabs */
 .nav-tabs {
@@ -46,8 +46,8 @@
 }
 
 .tab.active {
-  background: #007bff;
-  border-color: #0056b3;
+  background: #3a2ee2;
+  border-color: #1f0775;
   font-weight: bold;
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import './ErrorDashboard.css';
 
@@ -10,9 +10,8 @@ const ErrorDashboardClean: React.FC = () => {
   const [dbRows, setDbRows] = useState<any[]>([]);
   const [currentDbRow, setCurrentDbRow] = useState<any | null>(null);
 
-  const [userBarcode, setUserBarcode] = useState('');
+  const [userIdentifier, setUserIdentifier] = useState('');
   const [userTemplate, setUserTemplate] = useState('');
-  const [userRfid, setUserRfid] = useState('');
   const [userWeight, setUserWeight] = useState('');
 
   const [dropdowns, setDropdowns] = useState<string[]>([]);
@@ -24,6 +23,33 @@ const ErrorDashboardClean: React.FC = () => {
 
   // Labels con Alert_Flag al final
   const dropdownLabels = [...dropdownLabelsBase, 'Alert_Flag'];
+
+  // Build a combo-list of identifiers from the Sensor column (preferred).
+  // Fallback to Barcode / RFID if no sensor column exists.
+  const identifierOptions = useMemo(() => {
+    const s = new Set<string>();
+    if (!dbRows) return [] as string[];
+    dbRows.forEach(r => {
+      const data = r.data || {};
+      // collect from any field that mentions 'sensor' in its key
+      Object.keys(data).forEach(k => {
+        if (k && k.toLowerCase().includes('sensor')) {
+          const v = data[k];
+          if (v != null && String(v).trim() !== '') s.add(String(v));
+        }
+      });
+    });
+    // fallback to Barcode/RFID if none found
+    if (s.size === 0) {
+      dbRows.forEach(r => {
+        const b = r.data?.Barcode;
+        const rf = r.data?.RFID;
+        if (b != null && String(b).trim() !== '') s.add(String(b));
+        if (rf != null && String(rf).trim() !== '') s.add(String(rf));
+      });
+    }
+    return Array.from(s);
+  }, [dbRows]);
 
   const fetchDb = async () => {
     try {
@@ -41,9 +67,20 @@ const ErrorDashboardClean: React.FC = () => {
     const layoutName = `Layout_${randomIndex}`;
     const found = dbRows.find(r => r.data && r.data.Layout === layoutName) || dbRows[0];
     setCurrentDbRow(found || null);
-
-    // Reset input fields y control de Compare
-    setUserBarcode(''); setUserTemplate(''); setUserRfid(''); setUserWeight('');
+    // Reset input fields and control of Compare. Pre-fill identifier and layout from the found row.
+    const pre = (found && found.data) ? found.data : {};
+    // pick sensor-like field first, otherwise Barcode/RFID
+    let defaultIdentifier = '';
+    if (pre) {
+      Object.keys(pre).forEach(k => {
+        if (!defaultIdentifier && k && k.toLowerCase().includes('sensor')) {
+          defaultIdentifier = pre[k];
+        }
+      });
+      if (!defaultIdentifier) defaultIdentifier = pre.Barcode || pre.RFID || '';
+    }
+    setUserIdentifier(defaultIdentifier || '');
+    setUserTemplate(pre.Layout || ''); setUserWeight('');
     setShowDropdowns(false); setAlerts([]); 
     setDropdowns(Array(dropdownLabels.length).fill(''));
     setHasCompared(false);
@@ -56,7 +93,7 @@ const ErrorDashboardClean: React.FC = () => {
   };
 
   const handleCompare = () => {
-    const allFilled = userBarcode.trim() && userTemplate.trim() && userRfid.trim() && userWeight.trim();
+    const allFilled = userIdentifier.trim() && userTemplate.trim() && userWeight.trim();
     if (!allFilled) return;
 
     const now = new Date().toLocaleString();
@@ -67,8 +104,18 @@ const ErrorDashboardClean: React.FC = () => {
       issues.push('No reference row available from DB.');
     } else {
       const ref = currentDbRow.data || {};
-      if ((ref.Barcode || '') !== userBarcode) issues.push(`Barcode mismatch (expected: ${ref.Barcode || 'n/a'})`);
-      if ((ref.RFID || '') !== userRfid) issues.push(`RFID mismatch (expected: ${ref.RFID || 'n/a'})`);
+      // determine expected identifier from sensor-like fields, else barcode/rfid fallback
+      let expectedIdentifier = '';
+      Object.keys(ref).forEach(k => {
+        if (!expectedIdentifier && k && k.toLowerCase().includes('sensor')) {
+          expectedIdentifier = ref[k];
+        }
+      });
+      if (!expectedIdentifier) {
+        expectedIdentifier = ref.Barcode || ref.RFID || '';
+      }
+      if ((expectedIdentifier || '') !== userIdentifier) issues.push(`Identifier mismatch (expected: ${expectedIdentifier || 'n/a'})`);
+
       if ((ref.Layout || '') !== userTemplate) issues.push(`Layout mismatch (expected: ${ref.Layout || 'n/a'})`);
       const refW = parseNumber(ref.Weight || '');
       const uW = parseNumber(userWeight || '');
@@ -84,7 +131,7 @@ const ErrorDashboardClean: React.FC = () => {
 
     if (currentDbRow) {
       const newDropdowns = dropdownLabelsBase.map(l => currentDbRow.data?.[l] || '');
-      // Alert_Flag al final
+      // Alert_Flag at the end
       newDropdowns.push(issues.length > 0 ? issues.join('; ') : 'OK');
       setDropdowns(newDropdowns);
     }
@@ -111,9 +158,16 @@ const ErrorDashboardClean: React.FC = () => {
               <img src={`/layouts/Layout_${randomIndex}.png`} alt={`Layout ${randomIndex}`} />
             </div>
             <ul className="hello-list">
-              <li><strong>Barcode:</strong> {expected.Barcode || '—'}</li>
+              <li><strong>Identifier:</strong> {(() => {
+                // prefer sensor-like field
+                if (!expected) return '—';
+                const keys = Object.keys(expected || {});
+                for (const k of keys) {
+                  if (k && k.toLowerCase().includes('sensor')) return expected[k];
+                }
+                return expected.Barcode || expected.RFID || '—';
+              })()}</li>
               <li><strong>Layout:</strong> {expected.Layout || `Layout_${randomIndex}`}</li>
-              <li><strong>RFID:</strong> {expected.RFID || '—'}</li>
               <li><strong>Weight:</strong> {expected.Weight || '—'}</li>
             </ul>
           </div>
@@ -121,16 +175,12 @@ const ErrorDashboardClean: React.FC = () => {
           <div className="right-panel">
             <div className="input-grid">
               <div className="input-item">
-                <label>Barcode</label>
-                <input value={userBarcode} onChange={e => setUserBarcode(e.target.value)} />
+                <label>Identifier</label>
+                <input list="identifiers-list" value={userIdentifier} onChange={e => setUserIdentifier(e.target.value)} placeholder="Select or type an identifier" />
               </div>
               <div className="input-item">
                 <label>Layout</label>
                 <input value={userTemplate} onChange={e => setUserTemplate(e.target.value)} />
-              </div>
-              <div className="input-item">
-                <label>RFID</label>
-                <input value={userRfid} onChange={e => setUserRfid(e.target.value)} />
               </div>
               <div className="input-item">
                 <label>Weight</label>
@@ -138,11 +188,18 @@ const ErrorDashboardClean: React.FC = () => {
               </div>
             </div>
 
+              {/* Shared datalist for identifiers (combo behavior) */}
+              <datalist id="identifiers-list">
+                {identifierOptions.map((opt, i) => (
+                  <option value={opt} key={i}>{opt}</option>
+                ))}
+              </datalist>
+
             <div className="dashboard-controls" style={{ marginTop: '12px' }}>
               <button
                 className="btn-equal"
                 onClick={handleCompare}
-                disabled={!userBarcode || !userTemplate || !userRfid || !userWeight}
+                disabled={!userIdentifier || !userTemplate || !userWeight}
               >
                 Compare
               </button>

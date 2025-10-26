@@ -11,27 +11,27 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🚀 Smart Execution Hub</h1>
-        <p>Gate Group - HackMTY 2025</p>
+        <h1> Catering SmartOps</h1>
+      
         
         <div className="nav-tabs">
           <button 
             className={`tab ${activeTab === 'bottles' ? 'active' : ''}`}
             onClick={() => setActiveTab('bottles')}
           >
-            🍷 Alcohol Bottle Decision
+            Alcohol Bottle Decision
           </button>
           <button 
             className={`tab ${activeTab === 'errors' ? 'active' : ''}`}
             onClick={() => setActiveTab('errors')}
           >
-            🔍 Real-Time Error Detection
+            Real-Time Error Detection
           </button>
           <button 
             className={`tab ${activeTab === 'efficiency' ? 'active' : ''}`}
             onClick={() => setActiveTab('efficiency')}
           >
-            👥 Employee Efficiency
+            Employee Efficiency
           </button>
         </div>
       </header>
