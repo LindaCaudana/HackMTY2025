@@ -13,6 +13,7 @@ app.use(express.json());
 
 // Importar rutas
 const errorDetectionRoutes = require('./routes/errorDetection');
+const realtimeErrorRoutes = require('./routes/realtimeError');
 
 // RUTA BASE DE PRUEBA
 app.get('/', (req, res) => {
@@ -35,6 +36,9 @@ app.get('/api/bottles/history', (req, res) => {
 
 // MÓDULO ERROR DETECTION
 app.use('/api/error-detection', errorDetectionRoutes);
+
+// MÓDULO RealTimeError Dataset (import + list)
+app.use('/api/realtime-error', realtimeErrorRoutes);
 
 // MÓDULO Efficiency Service
 app.use('/api/efficiency', efficiencyRoutes);

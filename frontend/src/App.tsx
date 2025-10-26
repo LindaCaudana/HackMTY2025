@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import './App.css';
 import BottleDecision from './components/BottleDecision';
-import ErrorDashboard from './components/ErrorDashboard/ErrorDashboard';
+// Use the cleaned dashboard implementation to avoid a corrupted source file
+import ErrorDashboard from './components/ErrorDashboard/ErrorDashboardClean';
 import EfficiencyDashboard from './components/EfficiencyDashboard/EfficiencyDashboard';
 
 function App() {

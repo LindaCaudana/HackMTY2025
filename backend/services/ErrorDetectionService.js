@@ -1,9 +1,23 @@
 // backend/services/ErrorDetectionService.js
+const db = require('../db');
+
 class ErrorDetectionService {
   constructor() {
     this.sensorReadings = [];
     this.alerts = [];
     this.stationMetrics = {};
+  }
+
+  // Obtener datos de la base de datos
+  getDataFromDatabase() {
+    try {
+      const stmt = db.prepare('SELECT * FROM realtime_error_items ORDER BY id DESC LIMIT 100');
+      const rows = stmt.all();
+      return rows.map(row => JSON.parse(row.data));
+    } catch (error) {
+      console.error('Error reading from database:', error);
+      return [];
+    }
   }
 
   // Procesar lectura de sensor en tiempo real
@@ -32,28 +46,22 @@ class ErrorDetectionService {
   analyzeForAlerts(reading) {
     const rules = [
       {
-        condition: (r) => r.deviationScore > 0.7,
+        condition: (r) => r.Deviation_Score > 0.7 || (parseFloat(r.Deviation_Score) || 0) > 0.7,
         level: 'HIGH',
-        message: `High deviation detected: ${reading.deviationScore}`,
+        message: `High deviation detected: ${r.Deviation_Score}`,
         type: 'DEVIATION'
       },
       {
-        condition: (r) => r.deviationScore > 0.3 && r.deviationScore <= 0.7,
+        condition: (r) => (r.Deviation_Score > 0.3 && r.Deviation_Score <= 0.7) || (parseFloat(r.Deviation_Score) || 0) > 0.3,
         level: 'MEDIUM', 
-        message: `Medium deviation: ${reading.deviationScore}`,
+        message: `Medium deviation: ${r.Deviation_Score}`,
         type: 'DEVIATION'
       },
       {
-        condition: (r) => r.sensorType === 'Camera' && r.detectedValue === 'Extra_Item',
-        level: 'MEDIUM',
-        message: 'Extra item detected in layout',
-        type: 'LAYOUT_ERROR'
-      },
-      {
-        condition: (r) => r.sensorType === 'Weight' && Math.abs(parseFloat(r.expectedValue) - parseFloat(r.detectedValue)) > 0.5,
+        condition: (r) => r.Alert_Flag === 1 || r.Alert_Flag === '1' || r.Alert_Flag === true,
         level: 'HIGH',
-        message: 'Significant weight discrepancy',
-        type: 'WEIGHT_ERROR'
+        message: 'Alert flag detected',
+        type: 'ALERT_FLAG'
       }
     ];
 
@@ -61,13 +69,13 @@ class ErrorDetectionService {
       if (rule.condition(reading)) {
         return {
           id: Date.now() + Math.random(),
-          stationId: reading.stationId,
-          drawerId: reading.drawerId,
+          stationId: reading.Station_ID || reading.stationId || 'UNKNOWN',
+          drawerId: reading.Drawer_ID || reading.drawerId || 'UNKNOWN',
           level: rule.level,
           message: rule.message,
           type: rule.type,
-          sensorType: reading.sensorType,
-          timestamp: new Date().toISOString(),
+          sensorType: reading.Sensor_Type || reading.sensorType || 'UNKNOWN',
+          timestamp: reading.Timestamp || reading.timestamp || new Date().toISOString(),
           reading: reading
         };
       }
@@ -78,7 +86,7 @@ class ErrorDetectionService {
 
   // Actualizar métricas por estación
   updateStationMetrics(reading) {
-    const stationId = reading.stationId;
+    const stationId = reading.Station_ID || reading.stationId || 'UNKNOWN';
     
     if (!this.stationMetrics[stationId]) {
       this.stationMetrics[stationId] = {
@@ -92,11 +100,15 @@ class ErrorDetectionService {
 
     const metrics = this.stationMetrics[stationId];
     metrics.totalReadings++;
-    metrics.sensorTypes.add(reading.sensorType);
+    const sensorType = reading.Sensor_Type || reading.sensorType || 'UNKNOWN';
+    metrics.sensorTypes.add(sensorType);
 
-    if (reading.deviationScore > 0.3) {
+    const deviationScore = parseFloat(reading.Deviation_Score || reading.deviationScore || 0);
+    const alertFlag = reading.Alert_Flag === 1 || reading.Alert_Flag === '1' || reading.Alert_Flag === true;
+
+    if (alertFlag || deviationScore > 0.3) {
       metrics.alertCount++;
-      metrics.lastAlert = new Date().toISOString();
+      metrics.lastAlert = reading.Timestamp || reading.timestamp || new Date().toISOString();
     }
 
     metrics.errorRate = metrics.alertCount / metrics.totalReadings;
@@ -104,7 +116,23 @@ class ErrorDetectionService {
 
   // Obtener dashboard metrics
   getDashboardMetrics() {
-    const totalReadings = this.sensorReadings.length;
+    // Reiniciar métricas y alertas para procesar datos frescos desde BD
+    this.alerts = [];
+    this.stationMetrics = {};
+    
+    // Obtener datos de la base de datos
+    const dbReadings = this.getDataFromDatabase();
+    
+    // Procesar todas las lecturas para generar alertas y métricas
+    dbReadings.forEach(reading => {
+      const alert = this.analyzeForAlerts(reading);
+      if (alert) {
+        this.alerts.push(alert);
+      }
+      this.updateStationMetrics(reading);
+    });
+
+    const totalReadings = dbReadings.length;
     const totalAlerts = this.alerts.length;
     const activeAlerts = this.alerts.filter(alert => 
       new Date(alert.timestamp) > new Date(Date.now() - 30 * 60 * 1000) // Últimos 30 min
@@ -119,11 +147,15 @@ class ErrorDetectionService {
         lastAlert: metrics.lastAlert
       }));
 
+    // Calcular tasa de error basada en alert_flag de la base de datos
+    const alertFlagsCount = dbReadings.filter(r => r.Alert_Flag === 1 || r.Alert_Flag === '1').length;
+    const overallErrorRate = totalReadings > 0 ? alertFlagsCount / totalReadings : 0;
+
     return {
       totalReadings,
       totalAlerts,
       activeAlerts: activeAlerts.length,
-      overallErrorRate: totalReadings > 0 ? totalAlerts / totalReadings : 0,
+      overallErrorRate: overallErrorRate,
       problematicStations,
       recentAlerts: this.alerts.slice(-10).reverse(),
       stationMetrics: this.stationMetrics
