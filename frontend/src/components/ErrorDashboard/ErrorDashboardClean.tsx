@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './ErrorDashboard.css';
 
-const dropdownLabels = [
-  'Stream_ID','Timestamp','Station_ID','Drawer_ID','Spec_ID','Deviation_Score','Alert_Flag','Operator_ID','Flight_Number','Customer_Name'
+const dropdownLabelsBase = [
+  'Stream_ID','Timestamp','Station_ID','Drawer_ID','Spec_ID','Deviation_Score','Operator_ID','Flight_Number','Customer_Name'
 ];
 
 const ErrorDashboardClean: React.FC = () => {
@@ -15,12 +15,15 @@ const ErrorDashboardClean: React.FC = () => {
   const [userRfid, setUserRfid] = useState('');
   const [userWeight, setUserWeight] = useState('');
 
-  const [dropdowns, setDropdowns] = useState<string[]>(Array(dropdownLabels.length).fill(''));
+  const [dropdowns, setDropdowns] = useState<string[]>([]);
   const [randomIndex, setRandomIndex] = useState(1);
   const [timestamp, setTimestamp] = useState('');
   const [alerts, setAlerts] = useState<string[]>([]);
   const [showDropdowns, setShowDropdowns] = useState(false);
-  const [hasCompared, setHasCompared] = useState(false); // controla Next layout
+  const [hasCompared, setHasCompared] = useState(false); 
+
+  // Labels con Alert_Flag al final
+  const dropdownLabels = [...dropdownLabelsBase, 'Alert_Flag'];
 
   const fetchDb = async () => {
     try {
@@ -41,8 +44,9 @@ const ErrorDashboardClean: React.FC = () => {
 
     // Reset input fields y control de Compare
     setUserBarcode(''); setUserTemplate(''); setUserRfid(''); setUserWeight('');
-    setShowDropdowns(false); setAlerts([]); setDropdowns(Array(dropdownLabels.length).fill(''));
-    setHasCompared(false); // Next layout se bloquea al cambiar de layout
+    setShowDropdowns(false); setAlerts([]); 
+    setDropdowns(Array(dropdownLabels.length).fill(''));
+    setHasCompared(false);
   }, [dbRows, randomIndex]);
 
   const parseNumber = (s: any) => {
@@ -77,10 +81,16 @@ const ErrorDashboardClean: React.FC = () => {
     }
 
     setAlerts(issues);
-    if (currentDbRow) setDropdowns(dropdownLabels.map(l => currentDbRow.data?.[l] || ''));
-    setShowDropdowns(true);
 
-    setHasCompared(true); // Next layout se habilita
+    if (currentDbRow) {
+      const newDropdowns = dropdownLabelsBase.map(l => currentDbRow.data?.[l] || '');
+      // Alert_Flag al final
+      newDropdowns.push(issues.length > 0 ? issues.join('; ') : 'OK');
+      setDropdowns(newDropdowns);
+    }
+
+    setShowDropdowns(true);
+    setHasCompared(true);
   };
 
   const expected = currentDbRow ? currentDbRow.data || {} : {};
@@ -95,9 +105,7 @@ const ErrorDashboardClean: React.FC = () => {
           </div>
         </div>
 
-        {/* Grid principal */}
         <div className="grid-system">
-          {/* Left panel: Layout image + reference */}
           <div className="left-panel">
             <div className="image-box">
               <img src={`/layouts/Layout_${randomIndex}.png`} alt={`Layout ${randomIndex}`} />
@@ -110,7 +118,6 @@ const ErrorDashboardClean: React.FC = () => {
             </ul>
           </div>
 
-          {/* Right panel: Operator input + actions */}
           <div className="right-panel">
             <div className="input-grid">
               <div className="input-item">
@@ -142,7 +149,7 @@ const ErrorDashboardClean: React.FC = () => {
               <button
                 className="btn-equal"
                 onClick={() => setRandomIndex(n => (n >= 6 ? 1 : n + 1))}
-                disabled={!hasCompared} // solo se habilita después de Compare
+                disabled={!hasCompared}
               >
                 Next layout
               </button>
@@ -159,13 +166,13 @@ const ErrorDashboardClean: React.FC = () => {
           </div>
         </div>
 
-        {/* DB columns preview - FUERA del grid */}
         {showDropdowns && (
           <div className="dropdown-row">
             <h3>DB columns preview</h3>
             <div className="dropdowns-grid">
               {dropdownLabels.map((label, idx) => {
                 const isTimestamp = label.toLowerCase() === 'timestamp';
+                const isAlertFlag = label === 'Alert_Flag';
                 return (
                   <div className="dropdown-item" key={idx}>
                     <label>{label}</label>
@@ -174,10 +181,17 @@ const ErrorDashboardClean: React.FC = () => {
                     ) : (
                       <input
                         value={dropdowns[idx] || ''}
+                        style={isAlertFlag ? {
+                          color: dropdowns[idx] === 'OK' ? 'green' : 'red',
+                          fontWeight: '600'
+                        } : {}}
+                        readOnly={isAlertFlag} // Alert_Flag siempre readonly
                         onChange={e => {
-                          const next = [...dropdowns];
-                          next[idx] = e.target.value;
-                          setDropdowns(next);
+                          if (!isAlertFlag) {
+                            const next = [...dropdowns];
+                            next[idx] = e.target.value;
+                            setDropdowns(next);
+                          }
                         }}
                       />
                     )}
