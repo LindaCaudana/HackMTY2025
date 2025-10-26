@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './EfficiencyDashboard.css';
 
@@ -36,24 +36,24 @@ const EfficiencyDashboard: React.FC = () => {
   const [recordIdFilter, setRecordIdFilter] = useState<string>('');
   const [employeeFilter, setEmployeeFilter] = useState<string>('');
 
- const fetchRanking = async () => {
-  try {
-    const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/metrics');
-    setRanking(response.data); // ✅ corregido
-  } catch (error) {
-    console.error('Error fetching ranking:', error);
-  }
-};
+  const fetchRanking = useCallback(async () => {
+    try {
+      const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/metrics');
+      setRanking(response.data);
+    } catch (error) {
+      console.error('Error fetching ranking:', error);
+    }
+  }, []);
 
-const fetchEmployeeTasks = async (employeeId?: string) => {
-  try {
-    await axios.post('https://hackmty2025.onrender.com/api/efficiency/simulate-record');
-    await fetchRanking(); // ✅ refresca el ranking correctamente
-  } catch (error) {
-    console.error('Error fetching employee tasks:', error);
-    setEmployeeTasks([]);
-  }
-};
+  const fetchEmployeeTasks = useCallback(async (employeeId?: string) => {
+    try {
+      await axios.post('https://hackmty2025.onrender.com/api/efficiency/simulate-record');
+      await fetchRanking(); // refresca el ranking
+    } catch (error) {
+      console.error('Error fetching employee tasks:', error);
+      setEmployeeTasks([]);
+    }
+  }, [fetchRanking]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -61,23 +61,18 @@ const fetchEmployeeTasks = async (employeeId?: string) => {
       setLoading(false);
     };
     loadData();
-  }, []);
+  }, [fetchRanking]);
 
   useEffect(() => {
     if (selectedEmployee) {
       fetchEmployeeTasks(selectedEmployee);
     }
-  }, [selectedEmployee]);
+  }, [selectedEmployee, fetchEmployeeTasks]);
 
   const getEfficiencyStatus = (score: number) => {
     if (score >= 85) return { text: 'Eficiente', color: 'efficient' };
     if (score >= 70) return { text: 'Regular', color: 'regular' };
     return { text: 'Mejorar', color: 'improve' };
-  };
-
-  const getEmployeeName = (employeeId: string) => {
-    // Usar directamente el Employee ID del Excel
-    return employeeId;
   };
 
   const calculateItemsPerHour = (employee: EmployeeRanking) => {
@@ -88,7 +83,6 @@ const fetchEmployeeTasks = async (employeeId?: string) => {
   const filteredRanking = ranking.filter(emp => {
     const matchesEmployee = !employeeFilter || 
       emp.employeeId.toLowerCase().includes(employeeFilter.toLowerCase());
-    
     return matchesEmployee;
   });
 
