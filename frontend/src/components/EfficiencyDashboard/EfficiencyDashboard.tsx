@@ -70,7 +70,7 @@ const EfficiencyDashboard: React.FC = () => {
       console.error('Error fetching employee tasks:', error);
       setEmployeeTasks([]);
     }
-  }, [fetchRanking]);
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
