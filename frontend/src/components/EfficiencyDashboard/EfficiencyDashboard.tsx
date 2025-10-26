@@ -36,24 +36,24 @@ const EfficiencyDashboard: React.FC = () => {
   const [recordIdFilter, setRecordIdFilter] = useState<string>('');
   const [employeeFilter, setEmployeeFilter] = useState<string>('');
 
-  const fetchRanking = async () => {
-    try {
-      const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/metrics');
-      setMetrics(response.data);
-    } catch (error) {
-      console.error('Error fetching ranking:', error);
-    }
-  };
+ const fetchRanking = async () => {
+  try {
+    const response = await axios.get('https://hackmty2025.onrender.com/api/efficiency/metrics');
+    setRanking(response.data); // ✅ corregido
+  } catch (error) {
+    console.error('Error fetching ranking:', error);
+  }
+};
 
-  const fetchEmployeeTasks = async (employeeId?: string) => {
-    try {
-      await axios.post('https://hackmty2025.onrender.com/api/efficiency/simulate-record');
-      await fetchMetrics(); // Refresh metrics after simulation
-    } catch (error) {
-      console.error('Error fetching employee tasks:', error);
-      setEmployeeTasks([]);
-    }
-  };
+const fetchEmployeeTasks = async (employeeId?: string) => {
+  try {
+    await axios.post('https://hackmty2025.onrender.com/api/efficiency/simulate-record');
+    await fetchRanking(); // ✅ refresca el ranking correctamente
+  } catch (error) {
+    console.error('Error fetching employee tasks:', error);
+    setEmployeeTasks([]);
+  }
+};
 
   useEffect(() => {
     const loadData = async () => {
