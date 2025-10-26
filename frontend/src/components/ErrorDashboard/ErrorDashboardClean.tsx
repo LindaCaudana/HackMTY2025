@@ -47,7 +47,7 @@ const ErrorDashboardClean: React.FC = () => {
     setShowDropdowns(false); setAlerts([]); 
     setDropdowns(Array(dropdownLabels.length).fill(''));
     setHasCompared(false);
-  }, [dbRows, randomIndex]);
+  }, [dbRows, randomIndex, dropdownLabels.length]);
 
   const parseNumber = (s: any) => {
     if (s == null) return NaN;
